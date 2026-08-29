@@ -143,6 +143,7 @@ protected:
 	afx_msg void OnBnClickedShowunversioned();
 	afx_msg void OnBnClickedHistory();
 	afx_msg void OnBnClickedBugtraqbutton();
+	afx_msg void OnBnClickedGenerateCommitMsg();
 	afx_msg void OnEnChangeLogmessage();
 	afx_msg void OnFocusMessage();
 	afx_msg void OnFocusFileList();

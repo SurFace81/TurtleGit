@@ -114,6 +114,7 @@ void CCommitDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CCommitDlg, CResizableStandAloneDialog)
 	ON_BN_CLICKED(IDC_SHOWUNVERSIONED, OnBnClickedShowunversioned)
+	ON_BN_CLICKED(IDC_GENERATE_COMMIT_MSG, OnBnClickedGenerateCommitMsg)
 	ON_NOTIFY(SCN_UPDATEUI, IDC_LOGMESSAGE, OnScnUpdateUI)
 //	ON_BN_CLICKED(IDC_HISTORY, OnBnClickedHistory)
 	ON_BN_CLICKED(IDC_BUGTRAQBUTTON, OnBnClickedBugtraqbutton)
@@ -1747,6 +1748,13 @@ void CCommitDlg::OnBnClickedShowunversioned()
 		m_ListCtrl.Show(dwShow, 0, true, dwShow & ~(CTGitPath::LOGACTIONS_UNVER), true);
 		UpdateCheckLinks();
 	}
+}
+
+void CCommitDlg::OnBnClickedGenerateCommitMsg()
+{
+	// TODO
+	m_cLogMessage.SetText(L"Generated commit message");
+	UpdateData(FALSE);
 }
 
 void CCommitDlg::OnEnChangeLogmessage()

@@ -1,4 +1,4 @@
-//{{NO_DEPENDENCIES}}
+﻿//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by d:\TortoiseGit\src\Resources\TortoiseProcENG.rc
 //
@@ -1703,6 +1703,7 @@
 #define IDC_SHOWREVCOUNTER              1910
 #define IDS_SETTINGS_SHOWREVCOUNTER_TT  1911
 #define IDC_USEMAILMAP                  1911
+#define IDC_GENERATE_COMMIT_MSG			1912
 #define IDS_INPUT_REMOVEONE             2014
 #define IDS_INPUT_REMOVEMORE            2015
 #define IDS_MENUREFRESH                 2150
