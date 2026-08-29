@@ -41,6 +41,10 @@
 #include "FileTextLines.h"
 #include "DPIAware.h"
 #include "CmdLineParser.h"
+#include <winhttp.h>
+#include <thread>
+#include <atomic>
+#pragma comment(lib, "winhttp.lib")
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1750,11 +1754,251 @@ void CCommitDlg::OnBnClickedShowunversioned()
 	}
 }
 
+CString CCommitDlg::GetStagedDiff()
+{
+	CString output;
+	CString cmd;
+
+	// Get diff of staged changes; fall back to all changes if nothing staged
+	cmd = L"git.exe diff --cached";
+
+	CGit git;
+	git.Run(cmd, &output, nullptr, CP_UTF8);
+
+	if (output.IsEmpty())
+	{
+		cmd = L"git.exe diff";
+		git.Run(cmd, &output, nullptr, CP_UTF8);
+	}
+
+	// Truncate if too large for API
+	if (output.GetLength() > 8000)
+		output = output.Left(8000) + L"\n... (truncated)";
+
+	return output;
+}
+
+CString CCommitDlg::GenerateCommitMessage(const CString& diff)
+{
+	CString host, path, apiKey, model;
+	wchar_t buf[1024];
+
+	if (GetEnvironmentVariable(L"TURTLEGIT_AI_HOST", buf, _countof(buf)))
+		host = buf;
+	else
+	{
+		MessageBox(L"Set TURTLEGIT_AI_HOST environment variable.",
+				   L"Generate Message", MB_ICONERROR);
+		return L"";
+	}
+
+	if (GetEnvironmentVariable(L"TURTLEGIT_AI_PATH", buf, _countof(buf)))
+		path = buf;
+	else
+		path = L"/v1/chat/completions";
+
+	if (GetEnvironmentVariable(L"TURTLEGIT_AI_KEY", buf, _countof(buf)))
+		apiKey = buf;
+	else
+		apiKey = L"";
+
+	if (GetEnvironmentVariable(L"TURTLEGIT_AI_MODEL", buf, _countof(buf)))
+		model = buf;
+	else
+		model = L"";
+
+	HINTERNET hSession = WinHttpOpen(L"TurtleGit/1.0",
+									 WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+									 WINHTTP_NO_PROXY_NAME,
+									 WINHTTP_NO_PROXY_BYPASS, 0);
+	if (!hSession)
+		return L"";
+
+	HINTERNET hConnect = WinHttpConnect(hSession, host,
+										INTERNET_DEFAULT_HTTPS_PORT, 0);
+	if (!hConnect)
+	{
+		WinHttpCloseHandle(hSession);
+		return L"";
+	}
+
+	HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", path,
+											nullptr, WINHTTP_NO_REFERER,
+											WINHTTP_DEFAULT_ACCEPT_TYPES,
+											WINHTTP_FLAG_SECURE);
+	if (!hRequest)
+	{
+		WinHttpCloseHandle(hConnect);
+		WinHttpCloseHandle(hSession);
+		return L"";
+	}
+
+	// Headers
+	CString authHeader;
+	authHeader.Format(L"Authorization: Bearer %s", apiKey);
+	WinHttpAddRequestHeaders(hRequest, authHeader,
+							 (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+	WinHttpAddRequestHeaders(hRequest,
+							 L"Content-Type: application/json",
+							 (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+
+	// Build JSON body - escape diff for JSON
+	CStringA diffUtf8 = CUnicodeUtils::GetUTF8(diff);
+
+	// Escape special chars for JSON
+	diffUtf8.Replace("\\", "\\\\");
+	diffUtf8.Replace("\"", "\\\"");
+	diffUtf8.Replace("\n", "\\n");
+	diffUtf8.Replace("\r", "\\r");
+	diffUtf8.Replace("\t", "\\t");
+
+	CStringA prompt = "You are a commit message generator. "
+					  "Based on the following git diff, write a concise and descriptive "
+					  "commit message. Use past tense (e.g. 'Added feature', 'Fixed bug', "
+					  "'Removed unused code'). "
+					  "Reply with ONLY the commit message, no prefixes, no explanation.";
+
+	CStringA modelUtf8 = CUnicodeUtils::GetUTF8(model);
+
+	CStringA body;
+	body.Format(
+		"{\"model\":\"%s\","
+		"\"messages\":["
+		"{\"role\":\"system\",\"content\":\"%s\"},"
+		"{\"role\":\"user\",\"content\":\"%s\"}"
+		"],"
+		"\"max_tokens\":200,"
+		"\"temperature\":0.3}",
+		(LPCSTR)modelUtf8,
+		(LPCSTR)prompt,
+		(LPCSTR)diffUtf8);
+
+	// Send request
+	BOOL result = WinHttpSendRequest(hRequest,
+									 WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+									 (LPVOID)(LPCSTR)body, body.GetLength(),
+									 body.GetLength(), 0);
+
+	CString commitMsg;
+
+	if (result && WinHttpReceiveResponse(hRequest, nullptr))
+	{
+		// Read response
+		CStringA response;
+		DWORD bytesAvailable = 0;
+		DWORD bytesRead = 0;
+
+		while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0)
+		{
+			CStringA buf;
+			LPSTR pBuf = buf.GetBuffer(bytesAvailable + 1);
+			WinHttpReadData(hRequest, pBuf, bytesAvailable, &bytesRead);
+			pBuf[bytesRead] = '\0';
+			buf.ReleaseBuffer(bytesRead);
+			response += buf;
+		}
+
+		// Extract "content" from JSON response (simple parsing)
+		int contentPos = response.Find("\"content\":");
+		if (contentPos >= 0)
+		{
+			int start = response.Find("\"", contentPos + 10) + 1;
+			int end = response.Find("\"", start);
+			// Handle escaped quotes
+			while (end > 0 && response[end - 1] == '\\')
+				end = response.Find("\"", end + 1);
+
+			if (start > 0 && end > start)
+			{
+				CStringA msgUtf8 = response.Mid(start, end - start);
+				// Unescape JSON
+				msgUtf8.Replace("\\n", "\n");
+				msgUtf8.Replace("\\\"", "\"");
+				msgUtf8.Replace("\\\\", "\\");
+				commitMsg = CUnicodeUtils::GetUnicode(msgUtf8);
+			}
+		}
+	}
+
+	WinHttpCloseHandle(hRequest);
+	WinHttpCloseHandle(hConnect);
+	WinHttpCloseHandle(hSession);
+
+	return commitMsg;
+}
+
 void CCommitDlg::OnBnClickedGenerateCommitMsg()
 {
-	// TODO
-	m_cLogMessage.SetText(L"Generated commit message");
-	UpdateData(FALSE);
+	CString diff = GetStagedDiff();
+
+	if (diff.IsEmpty())
+	{
+		MessageBox(L"No changes found to generate a commit message from.",
+				   L"Generate Message", MB_ICONINFORMATION);
+		return;
+	}
+
+	GetDlgItem(IDC_GENERATE_COMMIT_MSG)->EnableWindow(FALSE);
+
+	// Result storage
+	CString generatedMsg;
+	std::atomic<bool> done(false);
+	std::atomic<bool> cancelled(false);
+
+	// Create progress dialog using Windows TaskDialog
+	// (simpler than a custom dialog)
+	std::thread worker([&]() {
+		generatedMsg = GenerateCommitMessage(diff);
+		done = true;
+	});
+
+	// Show a simple marquee progress window
+	HWND hProgressDlg = nullptr;
+	TASKDIALOGCONFIG tdc = { sizeof(TASKDIALOGCONFIG) };
+	tdc.hwndParent = GetSafeHwnd();
+	tdc.dwFlags = TDF_SHOW_MARQUEE_PROGRESS_BAR | TDF_CALLBACK_TIMER | TDF_ALLOW_DIALOG_CANCELLATION;
+	tdc.pszWindowTitle = L"Generate Message";
+	tdc.pszMainInstruction = L"Generating commit message...";
+	tdc.pszContent = L"Waiting for AI response";
+	tdc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+
+	// Timer callback to close dialog when done
+	tdc.pfCallback = [](HWND hwnd, UINT msg, WPARAM, LPARAM,
+						LONG_PTR lpRefData) -> HRESULT {
+		auto pDone = reinterpret_cast<std::atomic<bool>*>(lpRefData);
+		if (msg == TDN_CREATED)
+		{
+			::SendMessageW(hwnd, TDM_SET_PROGRESS_BAR_MARQUEE, TRUE, 30);
+		}
+		else if (msg == TDN_TIMER && pDone->load())
+		{
+			::SendMessageW(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+		}
+		return S_OK;
+	};
+	tdc.lpCallbackData = reinterpret_cast<LONG_PTR>(&done);
+
+	int buttonPressed = 0;
+	TaskDialogIndirect(&tdc, &buttonPressed, nullptr, nullptr);
+
+	if (buttonPressed == IDCANCEL)
+		cancelled = true;
+
+	worker.join();
+
+	GetDlgItem(IDC_GENERATE_COMMIT_MSG)->EnableWindow(TRUE);
+
+	if (cancelled)
+		return;
+
+	if (generatedMsg.IsEmpty())
+	{
+		MessageBox(L"Failed to generate commit message. Check your API settings.",
+				   L"Generate Message", MB_ICONERROR);
+		return;
+	}
+
+	m_cLogMessage.SetText(generatedMsg);
 }
 
 void CCommitDlg::OnEnChangeLogmessage()

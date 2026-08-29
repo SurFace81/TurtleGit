@@ -144,6 +144,8 @@ protected:
 	afx_msg void OnBnClickedHistory();
 	afx_msg void OnBnClickedBugtraqbutton();
 	afx_msg void OnBnClickedGenerateCommitMsg();
+	CString GenerateCommitMessage(const CString& diff);
+	CString GetStagedDiff();
 	afx_msg void OnEnChangeLogmessage();
 	afx_msg void OnFocusMessage();
 	afx_msg void OnFocusFileList();
