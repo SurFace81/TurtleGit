@@ -193,6 +193,7 @@
     <ClCompile Include="Settings\SetDialogs3.cpp" />
     <ClCompile Include="Settings\SettingGitCredential.cpp" />
     <ClCompile Include="Settings\SettingsTUDiff.cpp" />
+    <ClCompile Include="Settings\SettingsAiFeat.cpp" />
     <ClCompile Include="SinglePropSheetDlg.cpp" />
     <ClCompile Include="AppUtils.cpp" />
     <ClCompile Include="DeleteConflictDlg.cpp" />
@@ -516,6 +517,7 @@
     <ClInclude Include="Settings\SettingsProgsDiff.h" />
     <ClInclude Include="Settings\SettingsProgsMerge.h" />
     <ClInclude Include="Settings\SettingsTUDiff.h" />
+    <ClInclude Include="Settings\SettingsAiFeat.h" />
     <ClInclude Include="Settings\SetWin11ContextMenu.h" />
     <ClInclude Include="SinglePropSheetDlg.h" />
     <ClInclude Include="DeleteConflictDlg.h" />

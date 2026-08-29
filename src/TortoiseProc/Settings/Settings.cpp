@@ -54,6 +54,7 @@
 #include "SettingsAdvanced.h"
 #include "SettingSMTP.h"
 #include "SettingsTUDiff.h"
+#include "SettingsAiFeat.h"
 #include "SysInfo.h"
 
 IMPLEMENT_DYNAMIC(CSettings, CTreePropSheet)
@@ -140,6 +141,7 @@ void CSettings::AddPropPages()
 	AddPropPage(new CSetSavedDataPage(), L"save");
 	AddPropPage(new CSettingsTBlame(), L"blame");
 	AddPropPage(new CSettingsUDiff(), L"udiff");
+	AddPropPage(new CSettingsAiFeat(), L"turtlemod");
 	AddPropPage(new CSettingsAdvanced(), L"advanced");
 }
 

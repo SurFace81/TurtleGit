@@ -2345,6 +2345,15 @@ BEGIN
     PUSHBUTTON      "Help",IDHELP,293,113,50,14
 END
 
+IDD_SETTINGSAI DIALOGEX 0, 0, 300, 200 
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION 
+CAPTION "AI" 
+FONT 9, "Segoe UI", 400, 0, 0x1 
+BEGIN 
+    LTEXT           "AI Settings", IDC_SETTINGSAI_LABEL, 7, 7, 286, 12 
+    CONTROL         "Enable AI features", IDC_AI_ENABLE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 7, 30, 200, 10 
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3363,6 +3372,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 127
     END
+
+    IDD_SETTINGSAI, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 293 
+        TOPMARGIN, 7 
+        BOTTOMMARGIN, 193 
+    END 
 END
 #endif    // APSTUDIO_INVOKED
 
