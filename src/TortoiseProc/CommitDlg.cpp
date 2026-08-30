@@ -490,6 +490,10 @@ BOOL CCommitDlg::OnInitDialog()
 
 	SetTheme(CTheme::Instance().IsDarkTheme());
 
+	CRegDWORD regAiEnabled(L"Software\\TortoiseGit\\AiFeaturesEnabled", FALSE);
+	if (!static_cast<DWORD>(regAiEnabled))
+		GetDlgItem(IDC_GENERATE_COMMIT_MSG)->ShowWindow(SW_HIDE);
+
 	return FALSE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -1781,32 +1785,30 @@ CString CCommitDlg::GetStagedDiff()
 
 CString CCommitDlg::GenerateCommitMessage(const CString& diff)
 {
-	CString host, path, apiKey, model;
-	wchar_t buf[1024];
+	CRegDWORD regEnabled(L"Software\\TortoiseGit\\AiFeaturesEnabled", FALSE);
+	if (!static_cast<DWORD>(regEnabled))
+		return L"";
 
-	if (GetEnvironmentVariable(L"TURTLEGIT_AI_HOST", buf, _countof(buf)))
-		host = buf;
-	else
+	CRegString regEndpoint(L"Software\\TortoiseGit\\AiEndpoint", L"");
+	CRegString regApiKey(L"Software\\TortoiseGit\\AiApiKey", L"");
+	CRegString regModelId(L"Software\\TortoiseGit\\AiModelId", L"");
+	CRegDWORD regCommitLang(L"Software\\TortoiseGit\\AiCommitLang", 0);
+
+	CString endpoint = static_cast<CString>(regEndpoint);
+	CString apiKey = static_cast<CString>(regApiKey);
+	CString model = static_cast<CString>(regModelId);
+	int commitLang = static_cast<DWORD>(regCommitLang);
+
+	if (endpoint.IsEmpty())
 	{
-		MessageBox(L"Set TURTLEGIT_AI_HOST environment variable.",
+		MessageBox(L"Set AI Endpoint in TortoiseGit Settings → AI.",
 				   L"Generate Message", MB_ICONERROR);
 		return L"";
 	}
 
-	if (GetEnvironmentVariable(L"TURTLEGIT_AI_PATH", buf, _countof(buf)))
-		path = buf;
-	else
-		path = L"/v1/chat/completions";
-
-	if (GetEnvironmentVariable(L"TURTLEGIT_AI_KEY", buf, _countof(buf)))
-		apiKey = buf;
-	else
-		apiKey = L"";
-
-	if (GetEnvironmentVariable(L"TURTLEGIT_AI_MODEL", buf, _countof(buf)))
-		model = buf;
-	else
-		model = L"";
+	// Split endpoint into host and path
+	CString host = endpoint;
+	CString path = L"/v1/chat/completions";
 
 	HINTERNET hSession = WinHttpOpen(L"TurtleGit/1.0",
 									 WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -1853,11 +1855,17 @@ CString CCommitDlg::GenerateCommitMessage(const CString& diff)
 	diffUtf8.Replace("\r", "\\r");
 	diffUtf8.Replace("\t", "\\t");
 
-	CStringA prompt = "You are a commit message generator. "
-					  "Based on the following git diff, write a concise and descriptive "
-					  "commit message. Use past tense (e.g. 'Added feature', 'Fixed bug', "
-					  "'Removed unused code'). "
-					  "Reply with ONLY the commit message, no prefixes, no explanation.";
+	CStringA langInstruction = (commitLang == 1) ? "Write the commit message in Russian." : "Write the commit message in English.";
+
+	CStringA prompt;
+	prompt.Format(
+		"You are a commit message generator. "
+		"Based on the following git diff, write a concise and descriptive "
+		"commit message. Use past tense (e.g. 'Added feature', 'Fixed bug', "
+		"'Removed unused code'). "
+		"%s "
+		"Reply with ONLY the commit message, no prefixes, no explanation.",
+		(LPCSTR)langInstruction);
 
 	CStringA modelUtf8 = CUnicodeUtils::GetUTF8(model);
 
