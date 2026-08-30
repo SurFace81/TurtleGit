@@ -25,8 +25,20 @@ protected:
 	BOOL OnInitDialog() override;
 	BOOL OnApply() override;
 	afx_msg void OnModified();
+	afx_msg void OnEnableClicked();
 
 private:
+	void EnableControls(BOOL bEnable);
+
 	BOOL m_bEnableMod;
+	CString m_sEndpoint;
+	CString m_sApiKey;
+	CString m_sModelId;
+
 	CRegDWORD m_regEnableMod;
+	CRegString m_regEndpoint;
+	CRegString m_regApiKey;
+	CRegString m_regModelId;
+	int m_nCommitLang;
+	CRegDWORD m_regCommitLang;
 };
