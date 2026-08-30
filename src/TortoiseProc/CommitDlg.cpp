@@ -373,6 +373,7 @@ BOOL CCommitDlg::OnInitDialog()
 //	AddAnchor(IDC_HISTORY, TOP_LEFT);
 	AddAnchor(IDC_LOGMESSAGE, TOP_LEFT, TOP_RIGHT);
 	AddAnchor(IDC_SIGNOFF, TOP_RIGHT);
+	AddAnchor(IDC_GENERATE_COMMIT_MSG, TOP_RIGHT);
 	AddAnchor(IDC_VIEW_PATCH, BOTTOM_RIGHT);
 	AddAnchor(IDC_PARTIAL_STAGING, BOTTOM_RIGHT);
 	AddAnchor(IDC_PARTIAL_UNSTAGING, BOTTOM_RIGHT);
@@ -2869,6 +2870,7 @@ void CCommitDlg::DoSize(int delta)
 	RemoveAnchor(IDC_LOGMESSAGE);
 	RemoveAnchor(IDC_SPLITTER);
 	RemoveAnchor(IDC_SIGNOFF);
+	RemoveAnchor(IDC_GENERATE_COMMIT_MSG);
 	RemoveAnchor(IDC_COMMIT_AMEND);
 	RemoveAnchor(IDC_COMMIT_AMENDDIFF);
 	RemoveAnchor(IDC_COMMIT_SETDATETIME);
@@ -2891,12 +2893,13 @@ void CCommitDlg::DoSize(int delta)
 	RemoveAnchor(IDC_CHECKFILES);
 	RemoveAnchor(IDC_CHECKSUBMODULES);
 
-	auto hdwp = BeginDeferWindowPos(24);
+	auto hdwp = BeginDeferWindowPos(25);
 	CSplitterControl::ChangeRect(hdwp, &m_cLogMessage, 0, 0, 0, delta);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_MESSAGEGROUP), 0, 0, 0, delta);
 	CSplitterControl::ChangeRect(hdwp, &m_ListCtrl, 0, delta, 0, 0);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_LISTGROUP), 0, delta, 0, 0);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_SIGNOFF), 0, delta, 0, delta);
+	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_GENERATE_COMMIT_MSG), 0, delta, 0, delta);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_COMMIT_AMEND), 0, delta, 0, delta);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_COMMIT_AMENDDIFF), 0, delta, 0, delta);
 	CSplitterControl::ChangeRect(hdwp, GetDlgItem(IDC_COMMIT_SETDATETIME), 0, delta, 0, delta);
@@ -2924,6 +2927,7 @@ void CCommitDlg::DoSize(int delta)
 	AddAnchor(IDC_LISTGROUP, TOP_LEFT, BOTTOM_RIGHT);
 	AddAnchor(IDC_FILELIST, TOP_LEFT, BOTTOM_RIGHT);
 	AddAnchor(IDC_SIGNOFF,TOP_RIGHT);
+	AddAnchor(IDC_GENERATE_COMMIT_MSG, TOP_RIGHT);
 	AddAnchor(IDC_COMMIT_AMEND,TOP_LEFT);
 	AddAnchor(IDC_COMMIT_AMENDDIFF,TOP_LEFT);
 	AddAnchor(IDC_COMMIT_SETDATETIME,TOP_LEFT);
